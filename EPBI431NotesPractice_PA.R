@@ -405,6 +405,10 @@ gg_qq <- function(x, distribution = "norm", ..., line.estimate = NULL, conf = 0.
 }
 
 
+#Confidence Interval of 95 example: For example, a 95% confidence interval covers 95% of the normal curve -- 
+#the probability of observing a value outside of this area is less than 0.05. Because the normal curve is symmetric, 
+#half of the area is in the left tail of the curve, and the other half of the area is in the right tail of the curve.
+
 #NOW we can run the following QQ plot: 
 
 gg_qq(nyfs1$bmi)
@@ -524,6 +528,266 @@ grid.arrange(p1, p2, ncol=2,
 
 ## 8.1 The Ladder of Power Transformations
 
+# There are times that data needs to be transformed in order to obtain a normal distribution. One of the possible ways
+#to do this is to follow a transformation ladder
+#As we move further away from the identity function (power = 1) we change the shape more and more in the
+#same general direction.
+#. For instance, if we try a logarithm, and this seems like too much of a change, we might try a square
+#root instead.
+#. Note that this ladder (which like many other things is due to John Tukey) uses the logarithm for the
+#"power zero" transformation rather than the constant, which is what x0 actually is.
+#. If the variable x can take on negative values, we might take a different approach. If x is a count of
+#something that could be zero, we often simply add 1 to x before transformation.
+
+## 8.3 Transformation Example: 
+
+#Sample 1 Untransformed, fitted with normal density
+set.seed(431432); data1 <- data.frame(sample1 = rchisq(n=100,df=2)) #random number generator
+ggplot(data1, aes(x=sample1)) +
+  geom_histogram(aes(y=..density..), bins=30, fill="dodgerblue", col="white") +
+  stat_function(fun=dnorm, lwd=1.5, col="purple",  #fun=dnrom -> lot a normal curve
+                args=list(mean=mean(data1$sample1),sd=sd(data1$sample1))) + 
+  annotate("text", x=4, y=0.3, col="purple",
+           label=paste("Mean = ", round(mean(data1$sample1),2),
+                       ", SD = ", round(sd(data1$sample1),2))) +
+  labs(title= "Sample 1, Untransformed, with fitted Normal density")
+
+# Does squaring sample 1 help to normalize it?
+ggplot(data1, aes(x=sample1^2)) +
+  geom_histogram(aes(y=..density..), bins=30, fill="dodgerblue", col="white") +
+  stat_function(fun=dnorm, lwd = 1.5, col="purple", 
+                args=list(mean=mean(data1$sample1^2), sd=sd(data1$sample1^2))) +
+  annotate("text", x=10, y=0.2, col="purple",
+           label=paste("Mean = ", round(mean(data1$sample1^2),2),
+                       ", SD = ", round(sd(data1$sample1^2),2))) +
+  labs(title="Sample 1, squared with fitted Normal Density")
+
+#Nope, still skewed
+
+#Does taking the Log help normalize the data?
+
+ggplot(data1, aes(x = log(sample1))) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "dodgerblue", col="white") +
+  stat_function(fun = dnorm, lwd = 1.5, col = "purple",
+                args = list(mean = mean(log(data1$sample1)), sd = sd(log(data1$sample1)))) +
+  annotate("text", x = -2, y = 0.3, col = "purple",
+           label = paste("Mean = ", round(mean(log(data1$sample1)),2),
+                         ", SD = ", round(sd(log(data1$sample1)),2))) +
+  labs(title = "Logarithm of Sample 1, with fitted Normal density")
+#Nope still skewed
+
+#Does taking the square root of the sample help normalize the data?
+
+ggplot(data1, aes(x=sqrt(sample1))) +
+  geom_histogram(aes(y=..density..), bins=30, fill="dodgerblue", col="white") +
+  stat_function(fun=dnorm, lwd=1.5, col="purple",
+                args=list(mean = mean(sqrt(data1$sample1)), sd = sd(sqrt(data1$sample1)))) +
+  annotate("text", x = 0.45, y = 0.7, col = "purple",
+           label = paste("Mean = ", round(mean(sqrt(data1$sample1)),2),
+                         ", SD = ", round(sd(sqrt(data1$sample1)),2))) +
+  labs(title = "Square Root of Sample 1, with fitted Normal density")
+
+#YES this one works! 
+
+#annotate function (R help) -> This function adds geoms to a plot, but unlike a typical geom function, the properties
+#of the geoms are not mapped from variables of a data frame, but are instead passed in as vectors. This is useful for
+#adding small annotations (such as text labels) or if you have your data in vectors, and for some reason don't want 
+#to put them in a data frame.
+#In this case, "annotate" is annotating the Mean and SD with respect to the normal density stat function
+
+# 8.4 Performing a quick comparison of the four data transformations simultaneously:  
+#Histogram comparisons:
+p1 <- ggplot(data1, aes(x = sample1)) + geom_histogram(bins = 30, fill = "dodgerblue") #Unchanged Sample1
+p2 <- ggplot(data1, aes(x = sample1^2)) + geom_histogram(bins = 30, fill = "magenta") #Squared Sapmple1
+p3 <- ggplot(data1, aes(x = sqrt(sample1))) + geom_histogram(bins = 30, fill = "seagreen") #Square root of Sample1
+p4 <- ggplot(data1, aes(x = log(sample1))) + geom_histogram(bins = 30, fill = "tomato") #log of Sample1
+grid.arrange(p1,p2,p3,p4, nrow=2, top="Comparison of Transformations with Histograms") #nrow = #of plots per row
+
+#QQplot comparisons:
+p1 <- ggplot(data1, aes(sample = sample1)) + geom_point(stat="qq", col = "dodgerblue") #Unchanged sample1
+p2 <- ggplot(data1, aes(sample = sample1^2)) + geom_point(stat="qq", col = "magenta") #Squared Sample1
+p3 <- ggplot(data1, aes(sample = sqrt(sample1))) + geom_point(stat="qq", col = "seagreen") #Square Root of sample1
+p4 <- ggplot(data1, aes(sample = log(sample1))) + geom_point(stat="qq", col = "tomato") #log of Sample1
+grid.arrange(p1, p2, p3, p4, nrow=2, top="Comparison of Transformations: Normal Q-Q Plots") #nrow = #of plots per row
+rm(p1, p2, p3, p4)
+
+
+##*** 8.5 Multiple ways of running through the "Transformation Ladder": 
+#Frequency Polygon plots:
+p1 <- ggplot(data1, aes(x = sample1^3)) + geom_freqpoly(col = 1) #Cubed sample1
+p2 <- ggplot(data1, aes(x = sample1^2)) + geom_freqpoly(col = 5) #Squared Sample1
+p3 <- ggplot(data1, aes(x = sample1)) + geom_freqpoly(col = "black") #Non-transformed sample1
+p4 <- ggplot(data1, aes(x = sqrt(sample1))) + geom_freqpoly(col = 5) #Square Root of sample1
+p5 <- ggplot(data1, aes(x = log(sample1))) + geom_freqpoly(col = 6) #log of sample1
+p6 <- ggplot(data1, aes(x = 1/sqrt(sample1))) + geom_freqpoly(col = 1) #1 over the square root of sample1
+p7 <- ggplot(data1, aes(x = 1/sample1)) + geom_freqpoly(col = 6) #inverse of sample1
+p8 <- ggplot(data1, aes(x = 1/(sample1^2))) + geom_freqpoly(col = 1) #1 over sample1 squared
+p9 <- ggplot(data1, aes(x = 1/(sample1^3))) + geom_freqpoly(col = 5) #1 over sample1 cubed
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, nrow=3,
+             top="Ladder of Power Transformations")
+
+#Normal QQplots:
+
+p1 <- ggplot(data1, aes(sample = sample1^3)) +
+  geom_point(stat="qq", col = 1) + labs(title = "x^3")  #cubed sample1
+p2 <- ggplot(data1, aes(sample = sample1^2)) +
+  geom_point(stat="qq", col = 5) + labs(title = "x^2")  #squared sample1
+p3 <- ggplot(data1, aes(sample = sample1)) +
+  geom_point(stat="qq", col = "black") + labs(title = "x") #unchanged sample1
+p4 <- ggplot(data1, aes(sample = sqrt(sample1))) +
+  geom_point(stat="qq", col = 5) + labs(title = "sqrt(x)") #sqrt sample 1
+p5 <- ggplot(data1, aes(sample = log(sample1))) +
+  geom_point(stat="qq", col = 6) + labs(title = "log x") #log of sample1
+p6 <- ggplot(data1, aes(sample = 1/sqrt(sample1))) +
+  geom_point(stat="qq", col = 1) + labs(title = "1/sqrt(x)") #1 over sqrt sample1
+p7 <- ggplot(data1, aes(sample = 1/sample1)) +
+  geom_point(stat="qq", col = 6) + labs(title = "1/x") #1 over sample1
+p8 <- ggplot(data1, aes(sample = 1/(sample1^2))) +
+  geom_point(stat="qq", col = 1) + labs(title = "1/(x^2)") #1 over sample1 squared
+p9 <- ggplot(data1, aes(sample = 1/(sample1^3))) +
+  geom_point(stat="qq", col = 5) + labs(title = "1/(x^3)") #1 over sample1 cubed
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, nrow=3,
+             bottom="Ladder of Power Transformations")
+
+
+###Chapter 9 - Assessing skew
+
+#The "describe" function in the "Psych" library can provide additional numerical information on data. ie:
+psych::describe(nyfs1$bmi)
+
+#vars       n mean   sd  median trimmed  mad  min  max range skew kurtosis   se
+#X1    1 1416 18.8 4.08   17.7   18.24  3.26 11.9 38.8  26.9 1.35     1.97 0.11
+
+
+#This package provides, in order, the following. . .
+#. n = the sample size
+#. mean = the sample mean
+#. sd = the sample standard deviation
+#. median = the median, or 50th percentile
+#. trimmed = mean of the middle 80% of the data -> This is a 20% trimmed mean (bottom 10% and top 10% of BMIs are
+#            removed). mean(nyfs1$bmi, trim=.1)
+#. mad = median absolute deviation -> fancier alternative to the IQR (and a bit more robust) which, in large sample
+#        sample sizes, for data that follow a Normal Distribution, will be (in expectation) equal to the standard dev.
+#        Essentially, the MAD is the median of the absolute deviations from the middle, multiplied by a constant
+#        (1.4826) to yield asymptotically normal consistency.
+#. min = minimum value in the sample
+#. max = maximum value in the sample
+#. range = max - min
+#. skew = skewness measure, described below (indicates degree of asymmetry)
+#. kurtosis = kurtosis measure -> an indicator of whether the distribution is heavy-tailed or light-tailed as compared
+#             to a Normal distribution
+#. se = standard error of the sample mean = stdev / square root of sample size, useful in inference
+#       [in this case: sd(nyfs1$bmi)/sqrt(length(nyfs1$bmi))]
+
+#Note on Kurtosis - 
+#Another measure of a distribution's shape that can be found in the psych library is the kurtosis. Kurtosis is
+#an indicator of whether the distribution is heavy-tailed or light-tailed as compared to a Normal distribution.
+#Positive kurtosis means more of the variance is due to outliers - unusual points far away from the mean
+#relative to what we might expect from a Normally distributed data set with the same standard deviation.
+#. A Normal distribution will have a kurtosis value near 0, a distribution with similar tail behavior to
+#what we would expect from a Normal is said to be mesokurtic
+#. Higher kurtosis values (meaningfully higher than 0) indicate that, as compared to a Normal distribution,
+#the observed variance is more the result of extreme outliers (i.e. heavy tails) as opposed to being the
+#result of more modest sized deviations from the mean. These heavy-tailed, or outlier prone, distributions
+#are sometimes called leptokurtic.
+#. Kurtosis values meaningfully lower than 0 indicate light-tailed data, with fewer outliers than we'd
+#expect in a Normal distribution. Such distributions are sometimes referred to as platykurtic, and include
+#distributions without outliers, like the Uniform distribution.
+
+# 9.4 The "Describe" function in Hmisc
+# The describe function in Hmisc knows enough to separate numerical from categorical variables, and give you separate
+#(and detailed) summaries for each. -> For categorical variables, it counts total # of observations (n), number of 
+#missing values, and number of unique categories (along with counts and percentages falling in each category)
+# -> For numerical variables, counts obs, missing values, unique values, info value for data (indicates how continuous
+# a variable is ie: a score of 1 is a completely continuous variable while score near 0 indicate lots of "ties" and 
+#very few unique values), sample mean, and sample percentiles (quantiles) of the data.
+Hmisc::describe(nyfs1)
+
+#9.5 xda from GitHub for numerical summaries for exploratory data analysis (downloaded from github)
+#library(devtools)
+#install_github("ujjwalkarn/xda")
+
+
+xda::numSummary(nyfs1)
+
+#Most of the elements of this numSummary should be familiar. Some new pieces include:
+#  . nunique = number of unique values
+#  . nzeroes = number of zeroes
+#  . noutlier = number of outliers (using a standard that isn't entirely transparent to me)
+#  . miss = number of rows with missing value
+#  . miss% = percentage of total rows with missing values ((miss/n)*100)
+#  . 5% = 5th percentile value of that variable (value below which 5 percent of the observations may be found)
+
+###**** 9.6 What Summaries to Report:*****
+# It is usually helpful to focus on the shape, center and spread of a distribution.
+#. If the data are skewed, report the median and IQR (or the three middle quantiles). You may want to
+#include the mean and standard deviation, but you should point out why the mean and median differ.
+#The fact that the mean and median do not agree is a sign that the distribution may be skewed. A
+#histogram will help you make that point.
+#. If the data are symmetric, report the mean and standard deviation, and possibly the median and IQR
+#as well.
+#. If there are clear outliers and you are reporting the mean and standard deviation, report them with the
+#outliers present and with the outliers removed. The differences may be revealing. The median and IQR
+#are not likely to be seriously affected by outliers.
+
+
+###Chapter 10 - Summarizing data within subgroups
+
+##10.1 Using dplyr and summarize to build a tibble of summary information
+
+nyfs1 %>%
+  group_by(sex) %>%
+  select(bmi, waist.circ, sex) %>%
+  summarise_each(funs(median))
+#group_by {dplyr} -> Most data operations are useful done on groups defined by variables in the the dataset. 
+#                    The group_by function takes an existing tbl and converts it into a grouped tbl where operations are 
+#                    performed "by group": ie group_by(.data, ...*, add = FALSE) (*... = variables to group by)
+#select() {dplyr} -> keeps only the variables you mention; rename() keeps all variables.
+#summarise_each -> Apply one or more functions to one or more columns 
+#funs -> List of function calls, generated by funs, or a character vector of function names.
+temp <- nyfs1 %>%
+  group_by(bmi.cat) %>%
+  summarize(mean(waist.circ), sd(waist.circ), median(waist.circ),
+            skew_1 = round((mean(waist.circ) - median(waist.circ)) / sd(waist.circ),3)) #notice the 3 = three decimals points
+knitr::kable(temp)
+#skew_1 is just defined as the equation "round((mean(waist.circ) - median(waist.circ)) / sd(waist.circ),3)"
+
+#kable {knitr} -> This is a very simple table generator. It is simple by design. It is not intended to replace any other
+#                 R packages for making tables.
+
+##10.2 - Using the "by" function to summarize groups numerically
+#We can summarize our data numerically in multiple ways, but to obtain data on each individual BMI subgroup
+#separately, we'll use the by function. ***
+
+by(nyfs1$waist.circ, nyfs1$bmi.cat, Hmisc::describe)
+
+#This essentially breaks down bmi for all groups (underweight, normal weight, overweight, and obese) and provides a
+#detailed summary for each through the "describe" function. 
+
+
+###Chapter 11 - Comparing Distributions Across Subgroups Graphically
+
+##11.1 - Boxplots to relate an outcome to a categorical predictor
+#Boxplots are much more useful when comparing samples of data. For instance, consider this comparison
+#boxplot describing the triceps skinfold results across the four levels of BMI category.
+
+ggplot(nyfs1, aes(x=bmi.cat, y=triceps.skinfold)) +
+  geom_boxplot()
+
+##11.2 - Augmenting the Boxplot with the Sample Mean
+#Often, we want to augment such a plot, perhaps with the sample mean within each category, so as to
+#highlight skew (in terms of whether the mean is meaningfully different from the median.)
+
+ggplot(nyfs1, aes(x=bmi.cat, y=triceps.skinfold)) +
+  geom_boxplot() +
+  stat_summary(fun.y="mean", geom="point", shape=23, size=3, fill="dodgerblue")
+
+##11.3 - Adding notches to a Boxplot 
+
+#Notches are like "confidence regions" around the median. If the notches do not overlap, as in this situation, this 
+#provides some evidence that the medians in the populations represented by these samples are in fact different:
+
+ggplot(nyfs1, aes(x=bmi.cat, y=triceps.skinfold, fill = bmi.cat))
 
 
 #Confidence Interval of 95 example: For example, a 95% confidence interval covers 95% of the normal curve -- 
