@@ -524,7 +524,8 @@ grid.arrange(p1, p2, ncol=2,
 #####. Many statistical methods, including t tests and analyses of variance, assume Normal distributions.*****
 #. We'll discuss using R to assess a range of what are called Box-Cox power transformations, via plots,
 #mainly.
-
+#Side note - The Variance is the average of the squared differences from the mean and the std dev is the square root
+#of the variance.
 
 ## 8.1 The Ladder of Power Transformations
 
@@ -787,7 +788,156 @@ ggplot(nyfs1, aes(x=bmi.cat, y=triceps.skinfold)) +
 #Notches are like "confidence regions" around the median. If the notches do not overlap, as in this situation, this 
 #provides some evidence that the medians in the populations represented by these samples are in fact different:
 
-ggplot(nyfs1, aes(x=bmi.cat, y=triceps.skinfold, fill = bmi.cat))
+ggplot(nyfs1, aes(x=bmi.cat, y=triceps.skinfold, fill = bmi.cat)) +
+  geom_boxplot(notch=TRUE) +
+  scale_fill_viridis(discrete=TRUE, option="plasma") +
+  labs(title="Triceps Skinfold by BMI category", 
+       x="BMI Percentile category", y="Triceps Skinfold (mm)")
+
+#option -> A character string indicating the colormap option to use. Four options are available: "magma" (or "A"),
+#"inferno" (or "B"), "plasma" (or "C"), and "viridis" (or "D", the default option).
+
+#There is no overlap between the notches for each of the four categories, so we might reasonably conclude that
+#the true median tricep skinfold values across the four categories are statistically significantly different.
+
+
+#Here's just an example of boxplots where the notches overlap:
+ggplot(nyfs1, aes(x=sex, y=age.exam, fill=sex)) +
+  geom_boxplot(notch=TRUE) +
+  guides(fill="none") + ##drops the legend
+  labs(title+"Age by Sex", x="", y="Age (in years)")
+#guides {ggplot2} -> guides for each scale can be set scale-by-scale with the "guide" argument, or en masse with "guides()"
+
+
+#11.4 - Using Multiple Histograms to Make Comparisons 
+
+#Can make an array of histograms to describe multiple groups of data, using ggplot2 and the notion of
+#facetting our plot.
+ggplot(nyfs1, aes(x=triceps.skinfold, fill=sex)) +
+  geom_histogram(binwidth=2,color="black") +
+  facet_wrap(~ sex) +
+  guides(fill="none") +
+  labs(title = "Triceps Skinfold by Sex")
+#facet_wrap wraps a 1d sequence of panels into 2d. This is generally a better use of screen space than facet_grid 
+#because most displays are roughly rectangular.
+
+#11.5 Using Multiple Density Plots to Make Comparisons:
+
+ggplot(nyfs1, aes(x=waist.circ, fill=bmi.cat)) +
+  geom_density() +
+  facet_wrap(~ bmi.cat) +
+  scale_fill_viridis(discrete=T) +
+  guides(fill="none") +
+  labs(title="Waist Circumference by BMI Category")
+
+#Plotting all densities on top of each other (semi-transparent)
+ggplot(nyfs1, aes(x=waist.circ, fill=bmi.cat)) +
+  geom_density(alpha=0.3) +
+  scale_fill_viridis(discrete=T) +
+  labs(title="Waist Circumference by BMI Category")
+
+#But transparent density is a bit messy above - works better when comparing two groups (ie sex):
+ggplot(nyfs1, aes(x=waist.circ, fill=sex)) +
+  geom_density(alpha=0.5) +
+  labs(title="Waist Circumference by Sex")
+
+
+## A violin plot is another method of looking at the distribution of datasets
+ggplot(nyfs1, aes(x=sex, y=triceps.skinfold, fill = sex)) +
+  geom_violin(trim=TRUE) +
+  guides(fill = "none") +
+  labs(title = "Triceps Skinfold by Sex")
+
+ggplot(nyfs1, aes(x=bmi.cat, y=waist.circ, fill = bmi.cat)) +
+  geom_violin(trim=FALSE) +
+  geom_boxplot(width=.1, outlier.colour=NA, color = c(rep("white",2), rep("black",2))) +
+  stat_summary(fun.y=median, geom="point", fill="white", shape=21, size=3) +
+  scale_fill_viridis(discrete=T) +
+  guides(fill = "none") +
+  labs(title = "Waist Circumference by BMI Category in nyfs1",
+       x = "BMI category", y = "Waist Circumference")
+
+###Chapter 12 - Mean Closing Force and Propodus Height of Crab Claws (crabs)
+setwd("D:/EPBI 431_432 Notes/Notes/2016/Data2016/PartA")
+
+crabs <- read.csv("crabs.csv")
+crabs <- tbl_df(crabs)
+
+#A table of the complete dataset: 
+
+knitr::kable(crabs)
+
+#We can look at the summary of force and heights for all crabs: 
+crabs %>% 
+  dplyr::select(force, height) %>%
+  psych::describe()
+
+#But it would be better to see them by category of crab:***
+crabs %>%
+  group_by(species) %>%
+  summarize(mean(force), median (force), mean(height), median(height))
+
+###Chapter 13 - Studying an Association with Correlations and Scatterplots
+
+#Plot describing force on the basis of height, across all 38 crabs
+ggplot(crabs, aes(x=height, y=force)) +
+  geom_point()
+
+#Adding shapes and color:
+ggplot(crabs, aes(x=height, y=force, color=species, shape=species)) +
+  geom_point(size=2) +
+  labs(title="Crab Claw Force By Size", 
+       x="Claw's propodus heigh (mm)", y="Mean closing Force (N)")
+
+#We can also facet out the data from each species into its own plot: 
+
+ggplot(crabs, aes(x=height, y=force, color=species, shape=species)) +
+  geom_point(size=2) +
+  facet_wrap(~ species) +
+  guides(color="none", shape="none") +
+  labs(title="Crab Claw Force by Size", 
+       x="Claw'spropodus height (mm)", y="Mean Closing Force (N)")
+
+# Many times, we would like to identify a pattern in our scatterplot so we can optionally add a smoothed loess line
+# to the scatter plot: 
+
+ggplot(crabs, aes(x = height, y = force)) +
+  geom_point() +
+  geom_smooth(se = FALSE) + # se = display confidence interval around smooth? (TRUE by default, see level to control
+  labs(title = "Crab Claw Force by Size", #Note level = 0.95 by default
+       x = "Claw's propodus height (mm)", y = "Mean closing force (N)")
+
+#It works for the multi-faceted plots as well: 
+ggplot(crabs, aes(x=height, y=force, color=species, shape=species)) +
+  geom_point(size=2) +
+  facet_wrap(~ species) +
+  guides(color="none", shape="none") +
+  geom_smooth(se=FALSE) +
+  labs(title="Crab Claw Force by Size", 
+       x="Claw'spropodus height (mm)", y="Mean Closing Force (N)")
+
+#By removing "se=FALSE" we can add confidence interval shading to our plots (they are set to 0.95 by default):
+ggplot(crabs, aes(x = height, y = force)) +
+  geom_point() +
+  geom_smooth() + # se = display confidence interval around smooth? (TRUE by default, see "level" to control) 
+  labs(title = "Crab Claw Force by Size", #Note level = 0.95 by default
+       x = "Claw's propodus height (mm)", y = "Mean closing force (N)")
+
+  
+#A loess smooth is a method of fitting a local polynomial regression model that R uses as its generic smooth
+#for scatterplots like this with fewer than 1000 observations. Think of the loess as a way of fitting a curve
+#to data by tracking (at point x) the points within a neighborhood of point x, with more emphasis given to
+#points near x. It can be adjusted by tweaking two specific parameters, in particular:
+#  . a "span" parameter (defaults to 0.75) which is also called "alpha" in the literature, that controls the degree of
+#    smoothing (essentially, how larger the neighborhood should be), and
+#  . a degree parameter (defaults to 2) which specifies the degree of polynomial to be used. Normally, this
+#    is either 1 or 2 - more complex functions are rarely needed for simple scatterplot smoothing.
+#From R help: span -> Controls the amount of smoothing for the default loess smoother. Smaller numbers produce wigglier
+#lines, larger numbers produce smoother lines
+
+
+
+
 
 
 #Confidence Interval of 95 example: For example, a 95% confidence interval covers 95% of the normal curve -- 
