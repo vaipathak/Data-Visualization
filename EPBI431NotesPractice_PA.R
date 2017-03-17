@@ -912,11 +912,21 @@ ggplot(crabs, aes(x=height, y=force, color=species, shape=species)) +
   geom_point(size=2) +
   facet_wrap(~ species) +
   guides(color="none", shape="none") +
-  geom_smooth(se=FALSE) +
-  labs(title="Crab Claw Force by Size", 
+  geom_smooth(se=FALSE) + # se = display confidence interval around smooth? (TRUE by default, see "level" to control)
+  labs(title="Crab Claw Force by Size", #Note level = 0.95 by default
        x="Claw'spropodus height (mm)", y="Mean Closing Force (N)")
 
 #By removing "se=FALSE" we can add confidence interval shading to our plots (they are set to 0.95 by default):
+ggplot(crabs, aes(x=height, y=force, color=species, shape=species)) +
+  geom_point(size=2) +
+  facet_wrap(~ species) +
+  guides(color="none", shape="none") +
+  geom_smooth() +
+  labs(title="Crab Claw Force by Size with Confidence Intervals", 
+       x="Claw'spropodus height (mm)", y="Mean Closing Force (N)")
+
+
+
 ggplot(crabs, aes(x = height, y = force)) +
   geom_point() +
   geom_smooth() + # se = display confidence interval around smooth? (TRUE by default, see "level" to control) 
@@ -935,6 +945,57 @@ ggplot(crabs, aes(x = height, y = force)) +
 #From R help: span -> Controls the amount of smoothing for the default loess smoother. Smaller numbers produce wigglier
 #lines, larger numbers produce smoother lines
 
+#Chapter 14 - Fitting a Linear Regression Model 
+
+#Is a "least sqaures model" likely to be an effective choice here? 
+
+
+mod <- lm(force ~ height, data = crabs) #force is the "outcome" variable and height is the "predictor" variable
+ggplot(crabs, aes(x=height, y=force)) +
+  geom_point() +
+  geom_smooth(method = "lm", color="red") +
+  labs(title="Crab Claw Force by Size with Linear Regression Model", 
+       x="Claw's propodus height (mm)", y= "Mean closing force (N)") +
+  annotate("text", x=11, y=0, color="red", fontface="italic",
+           label= paste("Force -", signif(coef(mod)[1],3), " + ",
+                        signif(coef(mod)[2],3), " Height "))
+#annotate ->  a geom that adds text labels to data that's in a vector. In this case a linear regression model (lm)
+## the "paste" function combines (concatenates) all vectors and strings together
+## the "signif" function rounds the values in its first argument to the specified number of significant digits (in this
+## case - 3) ie signif(x, digits=3) where in this case, x=coef(mod)[2] (3 is the digits).
+## the "coef" is a generic function which extracts model coefficients from objects returned by modeling functions(in this
+## case the coefficient from an lm -> "mod")  
+
+## 14.1 Fitting a Regression Line 
+
+#The variable mod contains the linear regression model that predicts the effect of height on force in the data "crabs"
+#A "summary function" can provide better detail of the fitted linear regression model: 
+summary(mod)
+#lm(force ~ height, data = crabs)
+#Residuals:
+#  Min       1Q   Median       3Q      Max 
+#-16.7945  -3.8113  -0.2394   4.1444  16.8814 
+#Coefficients:
+#  Estimate Std. Error t value Pr(>|t|)    
+#(Intercept) -11.0869     4.6224  -2.399   0.0218 *  
+#  height        2.6348     0.5089   5.177 8.73e-06 ***
+#  ---
+#  Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+#Residual standard error: 6.892 on 36 degrees of freedom
+#Multiple R-squared:  0.4268,	Adjusted R-squared:  0.4109 
+#F-statistic:  26.8 on 1 and 36 DF,  p-value: 8.73e-06
+
+#Again the "outcome" variable in this model is "force" and the "predictor" variable is "height" 
+#The "straight line model" for these data fitted by least squares is force = -11.1 + 2.63 height
+#***The slope of height is positive, which indicates that as height increases, the force will also increase - 
+#specifically, for every mm the height increases, the force increases by 2.63 Newtons!
+
+#The multiple R-squared (squared correlation coeffcient) is 0.427, which implies that 42.7% of the 
+#variation in force is explained using this linear model with height. It also implies that the Pearson 
+#correlation between force and height is the square root of 0.427 (or 0.653)
+
+##The Pearson correlation coefficient assesses how well the relationship between X and Y can be described using a 
+#linear function
 
 
 
