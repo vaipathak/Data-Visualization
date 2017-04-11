@@ -28,7 +28,7 @@ nyfs1
 str(nyfs1)
 
 #Sex is listed as a factor (categorial) with 2 levels - Female and Male.
-#If we want to know how many males and females there are, we can build a little table using the dplyr function:
+#If I want to know how many males and females there are, I can build a little table using the dplyr function:
 
 dplyr::select(nyfs1, sex) %>%
   table() 
@@ -867,6 +867,9 @@ crabs <- tbl_df(crabs)
 
 knitr::kable(crabs)
 
+##Knitr reference: https://yihui.name/knitr/ *
+## kable - simple table generator for LaTeX, HTML, Markdown (Not intended to replace any other R table-making package)
+
 #We can look at the summary of force and heights for all crabs: 
 crabs %>% 
   dplyr::select(force, height) %>%
@@ -965,6 +968,7 @@ ggplot(crabs, aes(x=height, y=force)) +
 ## case - 3) ie signif(x, digits=3) where in this case, x=coef(mod)[2] (3 is the digits).
 ## the "coef" is a generic function which extracts model coefficients from objects returned by modeling functions(in this
 ## case the coefficient from an lm -> "mod")  
+## Note for "coef" -> the [1] gives the line intercept (-11.1) and [2] gives the slope of the first predictor (2.63)
 
 ## 14.1 Fitting a Regression Line 
 
@@ -995,12 +999,297 @@ summary(mod)
 #correlation between force and height is the square root of 0.427 (or 0.653)
 
 ##The Pearson correlation coefficient assesses how well the relationship between X and Y can be described using a 
-#linear function
+#linear function where -1 is a strong negative correlation, 0 is no correlation, and 1 is a strong positive correlation
+
+#For the "crabs" data, the Pearson correlation of Force and Height is:
+cor(crabs$force, crabs$height) # = 0.653 which signifies a strong positive correlation with respect to Height and Force
+
+### 14.4 The Correx1 example
+
+# The correx1 data file contains six different sets of (x,y) points, identified by the "set" variable.
+
+
+correx1 <- read.csv("corr-ex1.csv")
+correx1 <- tbl_df(correx1)
+Hmisc::describe(correx1)
+
+##Reminder: The describe function in Hmisc knows enough to separate numerical from categorical variables, and give you 
+#separate (and detailed) summaries for each. -> For categorical variables, it counts total # of observations (n), number
+#of missing values, and number of unique categories (along with counts and percentages falling in each category)
+# -> For numerical variables, counts obs, missing values, unique values, info value for data (indicates how continuous
+# a variable is ie: a score of 1 is a completely continuous variable while score near 0 indicate lots of "ties" and 
+#very few unique values), sample mean, and sample percentiles (quantiles) of the data.
+
+
+##Output for Hmsic::describe(correx1):
+#correx1
+#3 Variables 277 Observations
+#---------------------------------------------------------------------------
+#  set
+#n missing unique
+#277 0 6
+#Alex Bonnie Colin Danielle Earl Fiona
+#Frequency 62 37 36 70 15 57
+#% 22 13 13 25 5 21
+#---------------------------------------------------------------------------
+#  x
+#n missing unique Info Mean .05 .10 .25 .50
+#277 0 181 1 46.53 11.54 15.79 29.49 46.15
+#89
+#.75 .90 .95
+#63.33 79.33 84.15
+#lowest : 5.897 7.436 7.692 9.744 10.000
+#highest: 93.846 94.103 94.615 95.128 98.205
+#---------------------------------------------------------------------------
+#  y
+#n missing unique Info Mean .05 .10 .25 .50
+#277 0 162 1 49.06 13.38 16.38 30.38 46.92
+#.75 .90 .95
+#68.08 84.62 88.62
+#lowest : 7.308 7.692 9.231 10.385 11.154
+#highest: 91.154 92.308 92.692 93.462 95.385
+#---------------------------------------------------------------------------
+
+### Breaking it down and looking at "Data Set Alex" only
+
+ggplot(filter(correx1, set == "Alex"), aes(x=x, y=y)) +
+  geom_point() +
+  labs(title = "Correx1: Data Set Alex")
+
+#Here I filtered the dataset "Correx1" for the set variable = to "Alex" only and then mapped the x and y coordinates
+#The plot shows a negative correlation between x and y. 
+
+#I can add a Loess smooth line as well to the above graph: 
+
+setA <- dplyr::filter(correx1, set=="Alex")
+
+ggplot(setA, aes(x=x, y=y)) +
+  geom_point() +
+  geom_smooth(col="blue") +
+  labs(title="correx1: Alex with Loess smooth")
+
+#Now to put it all together with a linear model: 
+
+ggplot(setA, aes(x=x, y=y)) +
+  geom_point() +
+  geom_smooth(method="lm", col="red") +
+  labs(title="correx1: Alex with fitted Linear Model") +
+  annotate("text", x=75, y=75, col = "purple", size=6,
+           label=paste("Pearson r = ", signif(cor(setA$x, setA$y), 3))) +
+  annotate("text", x=50, y=15, col="red", size=5,
+           label=paste("y = ", signif(coef(lm(setA$y ~ setA$x))[1],3),
+                       signif(coef(lm(setA$y ~ setA$x))[2],2),"x"))
+
+##Taking a look at Bonnie's dataset: 
+
+setB <- dplyr::filter(correx1, set == "Bonnie")
+
+ggplot(setB, aes(x=x, y=y)) +
+  geom_point() +
+  labs(title = "correx1: Dataset Bonnie")
+
+#Seems to be more of a positive correlation with Bonnie's Data - let's check with the LM: 
+ggplot(setB, aes(x=x, y=y)) +
+  geom_point() +
+  geom_smooth(method="lm", col="red") +
+  labs(title="correx1: Bonnie with fitted Linear Model") +
+  annotate("text", x=25, y=60, col="purple", size = 6,
+           label=paste("Pearson r = ", signif(cor(setB$y, setB$x), 2))) +
+  annotate("text", x=50, y=15, col="red", size = 5,
+           label=paste("y = ", signif(coef(lm(setB$y ~ setB$x))[1],3), " + ",
+                       signif(coef(lm(setB$y ~ setB$x))[2],2), "x"))
+#Confirmed positive correlation between x and y for Bonnie
+
+##Taking a look at the Pearson correlations for all individuals in the correx1 dataset: 
+tab1 <- correx1 %>%
+  group_by(set) %>%
+  summarise("Pearson r" = round(cor(x, y, use="complete"),2))
+
+
+knitr::kable(tab1)
+
+# |set      | Pearson r|
+# |:--------|---------:|
+# |Alex     |     -0.97|
+# |Bonnie   |      0.80|
+# |Colin    |     -0.80|
+# |Danielle |      0.00|
+# |Earl     |     -0.01|
+# |Fiona    |      0.00|
+
+#According to the table, only Alex, Bonnie, and Colin have a correlation. Danielle, Earl, and Fiona have no correlation
+#since the Pearson r is close to 0. Colin and Bonnie look like they would have a very similar scatter plot due to the 
+#coefficient (Just that Colin's will be negative) - I can build a few plots to compare and facet wrap them
+
+setBC <- dplyr::filter(correx1, set == "Bonnie" | set == "Colin")
+
+ggplot(setBC, aes(x=x, y=y)) +
+  geom_point() +
+  geom_smooth(method="lm", col="red") +
+  facet_wrap(~ set)
+
+rm(setA,setB,setBC)
+##Scatterplot shows an extreme outlier in Colin's graph that is affecting the dataset - important to take into account
+#when looking at statistical numbers!
+
+
+### 14.6  The Spearman Rank Correlation
+
+## The Spearman rank correlation looks at the relationship between X and Y in a "monotone" function - meaning that Y MUST
+## either be strictly increasing or decreasing as X increases or decreases. 
+## Similar to Pearson Correlation where dimensions fall between -1 and 1
+## Because of the "monotone" function, a positive Spearman correlation corresponds to an increasing (BUT NOT LINEAR)
+## association between X and Y, while a negative Spearman correlation corresponds to a decreasing (AGAIN NOT LINEAR)
+## association.
+
+
+
+cor(crabs$force, crabs$height) # = 0.653 -> Pearson Correlation
+cor(crabs$force, crabs$height, method="spearman") # = 0.657 -> Spearman Correlation
+# In this case, both are very similar 
+
+
+### Spearman vs Pearson examples: 
+
+spear1 <- read.csv("spear1.csv")
+spear2 <- read.csv("spear2.csv")
+spear3 <- read.csv("spear3.csv")
+spear4 <- read.csv("spear4.csv")
+
+ggplot(spear1, aes(x=x, y=y)) +
+  geom_point() +
+  labs(title = "Spearman vs Pearson, Example1") +
+  annotate("text", x=-10,y=20,  #Remember, need to run the plot in order to see where to place this data on the plot
+           label=paste("Pearson r = ",
+                       signif(cor(spear1$x, spear1$y),2),
+                       ", Spearman r = ",
+                       signif(cor(spear1$x, spear1$y, method="spearman"),2)))
+#Positive correlation (non-linear) with Pearson and Spearman both showing similar values
+
+ggplot(spear2, aes(x = x, y = y)) +
+  geom_point(col = "purple") +
+  geom_smooth(se = FALSE) + #adding a loess smooth without confidence intervals
+  labs(title = "Spearman vs. Pearson, Example 2") +
+  annotate("text", x = 10, y = 20, col = "purple",
+           label = paste("Pearson r = ",
+                         signif(cor(spear2$x, spear2$y),2),
+                         ", Spearman r = ",
+                         signif(cor(spear2$x, spear2$y, method = "spearman"),2)))
+#Negative correlation (non-linear) with Pearson and Spearman both showing similar values
 
 
 
 
+### 15 Checking to see if a Linear Model is Appropriate for the Data
 
+# Looking back at the crabs data we can look at the log-log relationship of height vs force where the log of the force
+# is predicted by the log of the height. 
+## A log-log model is appropriate when we think that percentage increases in X (Height) lead to constant percentage 
+## increases in Y (Force)
+
+ggplot(crabs, aes(x=log(height), y=log(force))) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  labs(title = "Log-Log Model for Crabs data")
+
+## Details of the Log-Log model
+
+modelLL <- lm(log(force)~log(height), data=crabs)
+summary(modelLL)
+
+#Call:
+#  lm(formula = log(force) ~ log(height), data = crabs)
+#
+#Residuals:
+#  Min      1Q  Median      3Q     Max 
+#-1.5657 -0.4450  0.1884  0.4798  1.2422 
+#
+#Coefficients:
+#  Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)  -2.7104     0.9251  -2.930  0.00585 ** 
+#  log(height)   2.2711     0.4284   5.302 5.96e-06 ***
+#  ---
+#  Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+#
+#Residual standard error: 0.6748 on 36 degrees of freedom
+#Multiple R-squared:  0.4384,	Adjusted R-squared:  0.4228 
+#F-statistic: 28.11 on 1 and 36 DF,  p-value: 5.96e-06
+
+## Here the regression equation is log(force) = -2.71 + 2.27log(height)
+#So, for example, if we found a crab with propodus height = 10 mm, our prediction for that crab's claw force
+#(in Newtons) based on this log-log model would be. . .
+# * log(force) = -2.71 + 2.27 log(10)
+# * log(force) = -2.71 + 2.27 x 2.303
+# * log(force) = 2.519
+# * and so predicted force = exp(2.519) = 12.4 Newtons
+
+## How does this compare with the original lm equation :
+#Original:
+#model.Lin <- lm(force ~ height, data=crabs)
+#summary(model.Lin)  
+#
+#Call:
+#  lm(formula = force ~ height, data = crabs)
+#
+#Residuals:
+#  Min       1Q   Median       3Q      Max 
+#-16.7945  -3.8113  -0.2394   4.1444  16.8814 
+#
+#Coefficients:
+#  Estimate Std. Error t value Pr(>|t|)    
+#(Intercept) -11.0869     4.6224  -2.399   0.0218 *  
+#  height        2.6348     0.5089   5.177 8.73e-06 ***
+#  ---
+#  Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+#
+#Residual standard error: 6.892 on 36 degrees of freedom
+#Multiple R-squared:  0.4268,	Adjusted R-squared:  0.4109 
+#F-statistic:  26.8 on 1 and 36 DF,  p-value: 8.73e-06
+
+## So the original equation for lm of force to height was force = -11.1 + 2.63 height
+##So, for example, if we found a crab with propodus height = 10 mm, our prediction for that crab's claw force
+#(in Newtons) based on this linear model would be. . .
+# * force = -11.087 + 2.635 x 10
+# * force = -11.087 + 26.348
+# * so predicted force = 15.3 Newtons.
+# So, it looks like the two models give different predictions.
+
+###** Before comparing, the original lm with the log-log, there's also the "predict" function which can give a simpler
+###   way of making predictions: 
+predict(model.Lin, data.frame(height=10), interval="prediction")
+#Results in: 
+#     fit      lwr      upr
+# 1 15.26133 1.048691 29.47397
+# Which matches the "15.3 Newtons" above. 
+# The other numbers (lwr and upr) mean that the linear model's predicted force associated with a single new crab claw
+# with propodus height 10mm is 15.3 Newtons, and that a 95% prediction interval for the true value of such a force is 
+#between 1.0 an 29.5 Newtons.
+
+##The same can be done with log-log -> ** IMPORTANT to NOTE that if we only run the "predict fucntion" on the log-log
+##we will get the log(force) answer and not the force in Newtons so we have to exponentiate by adding "exp" 
+exp(predict(modelLL, data.frame(height=10), interval="prediction"))
+#Results in:
+#     fit      lwr      upr
+#1 12.41736 3.082989 50.01341
+#Which again matches the "12.4 Newtons" in the log-log model above.
+#Once more, the numbers (lwr and upr) mean that the log-log model's predicted force associated with a single new crab
+#claw with a propodus of 10mm is 12.4 Newtons, and that a 95% prediction interval for the true value of such a force is
+#between 3.1 and 50 Newtons. 
+
+
+### Now I can compare the predictions of the two models graphically: 
+
+loglogdat <- data.frame(height = crabs$height, force = exp(predict(modelLL)))
+
+ggplot(crabs, aes(x = height, y = force)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, col="blue", linetype = 2) +
+  geom_line(data = loglogdat, col = "red", linetype = 2, size = 1) +
+  annotate("text", 7, 12, label = "Linear Model", col = "blue") +
+  annotate("text", 10, 8, label = "Log-Log Model", col = "red") +
+  labs(title = "Comparing the Linear and Log-Log Models for Crab Claw data")
+
+  
 #Confidence Interval of 95 example: For example, a 95% confidence interval covers 95% of the normal curve -- 
 #the probability of observing a value outside of this area is less than 0.05. Because the normal curve is symmetric, 
 #half of the area is in the left tail of the curve, and the other half of the area is in the right tail of the curve.
