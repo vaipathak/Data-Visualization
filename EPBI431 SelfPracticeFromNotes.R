@@ -1280,18 +1280,102 @@ exp(predict(modelLL, data.frame(height=10), interval="prediction"))
 ### Now I can compare the predictions of the two models graphically: 
 
 loglogdat <- data.frame(height = crabs$height, force = exp(predict(modelLL)))
+#The "loglogdat" variable is providing the log-log ratio value of the force based on height. As the equation above shows
+#the height at a certain point can be predicted by plugging the height (ie 10mm above), in the equation and receiving
+#the log value of the Force (and since I am already taking into the log of height in the modelLL, I do NOT need to take
+#another log of height in "loglogdat")
+##Note -> The predict function, when not given a new data frame, will use the
+##existing predictor values that are in our crabs data. Such predictions are often called fitted values.
 
-ggplot(crabs, aes(x = height, y = force)) +
+#Graph to compare log-log model to linear model:
+ggplot(crabs, aes(x=height, y=force)) +
   geom_point() +
-  geom_smooth(method = "lm", se = FALSE, col="blue", linetype = 2) +
-  geom_line(data = loglogdat, col = "red", linetype = 2, size = 1) +
-  annotate("text", 7, 12, label = "Linear Model", col = "blue") +
-  annotate("text", 10, 8, label = "Log-Log Model", col = "red") +
-  labs(title = "Comparing the Linear and Log-Log Models for Crab Claw data")
+  geom_smooth(method="lm", se=FALSE, col="blue", linetype=2) +
+  geom_line(data=loglogdat, col="red", linetype=2, size=1) +
+  annotate("text", 7, 12, label="Linear Model", col="blue") +
+  annotate("text", 10, 8, label="Log-Log Model", col="red") +
+  labs(title = "Comparing the Linear and Log-Log Models for Crab Claw Data")
 
+
+
+rm(loglogdat, model.Lin, modelLL)
   
-#Confidence Interval of 95 example: For example, a 95% confidence interval covers 95% of the normal curve -- 
-#the probability of observing a value outside of this area is less than 0.05. Because the normal curve is symmetric, 
-#half of the area is in the left tail of the curve, and the other half of the area is in the right tail of the curve.
 
+### Chapter 16 - The Western Collaborative Group Study Data (wcgs)
+
+
+wcgs <- read.csv("wcgs.csv")
+wcgs <- tbl_df(wcgs)
+
+#Codebook for Variables in the WCGS data frame (tibble)
+#Name     Stored As       Type        Details (units, levels, etc.)
+# id       integer      (nominal)      ID #, nominal and uninteresting
+# age      integer      quantitative    age, in years - no decimal places
+# agec     factor (5)   (ordinal)      age: 35-40, 41-45, 46-50, 51-55, 56-60
+# height   integer      quantitative   height, in inches
+# weight   integer      quantitative   weight, in pounds
+# lnwght   number       quantitative   natural logarithm of weight
+# wghtcat  factor (4)   (ordinal)      wt: < 140, 140-170, 170-200, > 200
+# bmi      number       quantitative   body-mass index:
+#                                      703 * weight in lb / (height in in)2
+#sbp       integer      quantitative   systolic blood pressure, in mm Hg
+#lnsbp     number       quantitative   natural logarithm of sbp
+#dbp       integer      quantitative   diastolic blood pressure, mm Hg
+#chol      integer      quantitative   total cholesterol, mg/dL
+#behpat    factor (4)   (nominal)      behavioral pattern: A1, A2, B3 or B4
+#dibpat    factor (2)   (binary)       behavioral pattern: A or B
+#smoke     factor (2)   (binary)       cigarette smoker: Yes or No
+#ncigs     integer      quantitative   number of cigarettes smoked per day
+#arcus     integer      (nominal)      arcus senilis present (1) or absent (0)
+#chd69     factor (2)   (binary)       CHD event: Yes or No
+#typchd69  integer      (4 levels)     event: 0 = no CHD, 1 = MI or SD,
+#                                      2 = silent MI, 3 = angina
+#time169   integer      quantitative   follow-up time in days
+#t1        number       quantitative   heavy-tailed (random draws)
+#uni       number       quantitative   light-tailed (random draws)
+
+## If needed "Hmisc::describe" can be used to give detailed information for each variable, "mosaic::favstats(wcgs$variable)
+## for any of the variables to get the min, mean, med, max, sd, n missing, and IQR for any desired variable in wcgs.
+## And psych::describe(wcgs$variable) can be used to obtain vars, n mean, sd median, mad, min, max, range, skew, and
+## kurtosis stats.
+
+### Start of simple with a Histogram of the systolic blood pressure (sbp): 
+ggplot(wcgs, aes(x=sbp)) +
+  geom_histogram(bins=30, fill="aquamarine", col="blue") +
+  labs(title="Histogram of Systolic BP from wcgs data")
+#Notice there is a right skew 
+
+#Adding a normal distribution to the above histogram:
+
+ggplot(wcgs, aes(x=sbp)) +
+  geom_histogram(aes(y=..density..), bins=30, fill="aquamarine", col="blue") +
+  stat_function(fun=dnorm, lwd=1.5, col="darkblue",
+                args=list(mean=mean(wcgs$sbp), sd=sd(wcgs$sbp))) +
+  annotate("text", x=200, y=0.01, col="darkblue",
+           label=paste("Mean = ", round(mean(wcgs$sbp),2),
+                       ", SD = ", round(sd(wcgs$sbp),2))) +
+  labs(title="Histogram of WCGS Systolic BP with Normal Distribution")
+  
+
+### Describing Outlying Values with Z-Scores
+
+## Using the "Hmisc" and "psych" package, the maximum systolic blood pressure value is "230" and is also the most extreme
+## value in the dataset. 
+
+Hmisc::describe(wcgs$sbp)
+#wcgs$sbp 
+#n  missing distinct     Info     Mean      Gmd      .05      .10      .25      .50 
+#3154        0       62    0.996    128.6    16.25      110      112      120      126 
+#.75      .90      .95 
+#136      148      156 
+#
+#lowest :  98 100 102 104 106, highest: 200 208 210 212 230
+
+psych::describe(wcgs$sbp)
+#     vars    n      mean    sd    median   trimmed    mad   min   max  range  skew   kurtosis   se
+#X1    1     3154   128.63  15.12   126      127.22   11.86   98   230   132    1.2     2.79    0.27
+
+# A Z-score can be used to measure how extreme the sbp of 230 is compared to the dataset. In this case the maximum value
+# of 230 is 6.71 standard deviations away from the mean and therefore has a Z-score of 6.7. The minimum systolic blood
+# pressure of 98 is 2.03 standard devations BELOW the mean and therefore has a z-score of -2. 
 
