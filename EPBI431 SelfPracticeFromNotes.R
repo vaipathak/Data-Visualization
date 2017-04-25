@@ -1327,7 +1327,7 @@ wcgs <- tbl_df(wcgs)
 #smoke     factor (2)   (binary)       cigarette smoker: Yes or No
 #ncigs     integer      quantitative   number of cigarettes smoked per day
 #arcus     integer      (nominal)      arcus senilis present (1) or absent (0)
-#chd69     factor (2)   (binary)       CHD event: Yes or No
+#chd69     factor (2)   (binary)       Coronary Heart Disease (CHD) event: Yes or No
 #typchd69  integer      (4 levels)     event: 0 = no CHD, 1 = MI or SD,
 #                                      2 = silent MI, 3 = angina
 #time169   integer      quantitative   follow-up time in days
@@ -1378,4 +1378,90 @@ psych::describe(wcgs$sbp)
 # A Z-score can be used to measure how extreme the sbp of 230 is compared to the dataset. In this case the maximum value
 # of 230 is 6.71 standard deviations away from the mean and therefore has a Z-score of 6.7. The minimum systolic blood
 # pressure of 98 is 2.03 standard devations BELOW the mean and therefore has a z-score of -2. 
+
+
+## Since the SBP normal histogram shows a right skew, I can run an inverse of the data and see if this provides a normal
+## distribution. 
+
+p1 <- ggplot(wcgs, aes(x=sbp)) +
+  geom_histogram(aes(y= ..density..), bins=30, fill="orchid1", color="white") +
+  stat_function(fun=dnorm, args=list(mean=mean(wcgs$sbp), sd=sd(wcgs$sbp)), col="blue") +
+  labs(x="SBP", title="SBP in WCGS data")
+
+p2 <- ggplot(wcgs, aes(x=1/sbp)) +
+  geom_histogram(aes(y= ..density..), bins=30, fill="orange1", color="white") +
+  stat_function(fun=dnorm, args=list(mean=mean(1/wcgs$sbp), sd=sd(1/wcgs$sbp)), col="blue") +
+  labs(x="1/SBP", title="1/SBP in WCGS data")
+  
+grid.arrange(p1, p2, ncol=2,
+               bottom= "Assessing Normality of SBP and 1/SBP in WCGS data")
+
+### Running some comparisons of data:
+
+## Comparing SBP by Smoking Status with Overlapping Densities
+
+ggplot(wcgs, aes(x=sbp, fill=smoke)) +
+  geom_density(alpha=0.3) +
+  scale_fill_viridis(discrete=T) +
+  labs(title="Systolic Blood Pressure by Smoking Status")
+# According to this chart, there does not seemt to be a large difference between the SBP of smokers vs non-smokers ->
+# which suggests some other factors in this population could be a result of the higher SBP.
+
+## Comparing SBP by Cardiopulminarty Heart Disease (CHD) event with facetted Histograms SBP = integer, CHD = categorical
+
+ggplot(wcgs, aes(x=sbp, fill=chd69)) +
+  geom_histogram(bins=20, color="black") +
+  facet_wrap(~ chd69) +
+  guides(fill="none") +
+  labs(title="Systolic BP by Cardiopulminary Heart Disease Status")
+
+## Making a Boxplot of SBP by weight category
+
+ggplot(wcgs, aes(x=wghtcat, y=sbp, fill=wghtcat)) +
+  geom_boxplot(notch=TRUE) +
+  scale_fill_viridis(discrete=TRUE) +
+  guides(fill="none") +
+  labs(title="Boxplot of Systolic BP by Weight Category in WCGS data", x="Weight Category",
+       y="Systolic Blood Pressure")
+# This gives the best representation of how sbp is affected by weight
+# A summary of a linear model can also show which variables affect SBP
+summary(lm(wcgs$sbp~wcgs$weight+wcgs$smoke))
+
+#Call:
+#lm(formula = wcgs$sbp ~ wcgs$weight + wcgs$smoke)
+
+#Residuals:
+#    Min      1Q  Median      3Q     Max 
+#-29.078 -10.097  -2.409   7.669 100.000 
+#
+#Coefficients:
+#              Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)   96.80819    2.17332  44.544   <2e-16 ***
+#wcgs$weight    0.18440    0.01243  14.831   <2e-16 ***
+#wcgs$smokeYes  1.01941    0.52511   1.941   0.0523 .  
+#---
+#Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+#
+#Residual standard error: 14.62 on 3151 degrees of freedom
+#Multiple R-squared:  0.06525,	Adjusted R-squared:  0.06466 
+#F-statistic:   110 on 2 and 3151 DF,  p-value: < 2.2e-16
+
+## The linear model also agrees with weight having more effect on sbp than smoking does. 
+
+# The Weight categories can be re-arranged to look neater since R placed them out of order. This can be done by adding
+# a new variable to coincide with the wghtcat variable to reorder : 
+
+levels(wcgs$wghtcat)
+wcgs$weight.f <- factor(wcgs$wghtcat, level=c("< 140", "140-170", "170-200", "> 200"))
+
+table(wcgs$weight.f, wcgs$wghtcat)
+
+#Here's the graph re-ordered
+ggplot(wcgs, aes(x=weight.f, y=sbp, fill=weight.f)) +
+  geom_boxplot(notch=TRUE) +
+  scale_fill_viridis(discrete=TRUE) +
+  guides(fill="none") +
+  labs(title="Boxplot of Systolic BP by Reordered Weight Category in WCGS",
+       x="Weight Category, Reordered", y="Systolic Blood Pressure")
+
 
