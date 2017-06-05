@@ -1,0 +1,180 @@
+---
+title: 'Li QC Analysis'
+author: "Vai Pathak"
+date: "May 31, 2017"
+output:
+  pdf_document:
+    number_sections: yes
+    toc: yes
+  html_document:
+    number_sections: yes
+    toc: yes
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(comment = NA)
+```
+
+
+
+```{r library, echo=FALSE, message=FALSE, warning=FALSE}
+library(dplyr); library(tidyr); library(tibble); library(devtools)
+library(grid); library(ggplot2); library(gridExtra); library(viridis); library(mosaic); library(GGally)
+
+LiLi <- read.csv("D:/SelfPractice/LiLiFFPE.csv")
+LiLi <- tbl_df(LiLi)
+
+LiArray <- read.csv("D:/SelfPractice/LiLiSamplesQC.csv")
+```
+
+\newpage
+
+Li QC Analysis
+
+This is a quick study to mainly see if the starting number of FFPE cores in a patient sample has any effect on the downstream QC metrics of the Affymetrix Clariom S microarray. So far 29 patient samples have been run on microarrays, each with each sample containing a different number of cores (mostly ranging from 1-3 cores).  
+
+
+
+# Table Summary of Cores and Samples 
+
+Here is a summary table of the number of samples having 1 2 or 3 cores (with the total sum being 29)
+
+```{r SummaryTable, echo=FALSE}
+t <- dplyr::select(LiArray, cores) %>%
+  table() %>%
+  addmargins()
+t
+```
+
+As seen in the table, there's a disproportionate number of samples and core numbers. There are 7 samples with 1 core, 13 samples with 2 cores, and 9 samples with 3 cores (for a total of 29 samples).  
+
+
+# The Distribution of the Concentration amongst all 29 samples. 
+
+## Histogram of the Concentrations
+
+Here we can take a look at how the concentration of the samples look across the board. 
+
+```{r Histogram, echo=FALSE, fig.height=4, fig.width=4.5}
+ggplot(LiArray, aes(x=conc_ng)) +
+  geom_histogram(bins=30, color = "black", fill = "dodgerblue") +
+  annotate("text", x=1200, y=3, col="darkblue",
+           label=paste("Mean = ", round(mean(LiArray$conc_ng),2),
+                       ", SD = ", round(sd(LiArray$conc_ng),2))) +
+  labs(title = "Histogram of the Distribution of Cocentration for the 29 samples", x="Concentration in ng/ul",
+       y="# of patient samples")
+
+```
+
+
+X shows the range of the concentration (in ng/ul) of each sample and Y gives the count (29 total samples). We can also see the average concentration is 544.67ng/ul - which is representative of all 29 samples regardless of their core numbers.
+
+\newpage
+
+## Boxplots, Density plots, and Histograms of the Cores and Concentrations
+
+```{r Boxplot, echo=FALSE}
+ggplot(LiArray, aes(x=as.factor(cores), y = conc_ng, fill = as.factor(cores))) +
+  geom_boxplot() +
+  scale_fill_viridis(discrete=TRUE, option = "plasma") +
+  guides(fill="none") +
+  stat_summary(fun.y="mean", geom="point", shape=23, size=3, fill="dodgerblue") +
+  labs(title="Boxplot of the Concentration of RNA grouped by Cores Isolated for Li Li",
+       x="Number of Cores per Patient Sample", y = "Concentration in ng")
+```
+
+The boxplot shows a grouping of concentrations by the number of cores. As expected - generally, the more cores we have, the higher concentration of RNA. Boxplots represent a five-number summary of the minimum, 25th percentile, median (black bars), 75th percentile, and the maximum. The blue diamonds represent the mean, which when different from the median, is representative of a skew in the distrubution. 
+
+```{r FacetHist, echo=FALSE}
+ggplot(LiArray, aes(x=conc_ng)) +
+  geom_histogram(binwidth = 100, color = "black") +
+  facet_wrap(~ cores) +
+  guides(fill = "none") +
+  labs(title = "Faceted Histogram by Cores", x="Concentration in ng/ul")
+```
+
+The breakdown of the boxplot's range can be seen better in the histogram of concentration distribution, separated by the number of cores in the patient sample. 
+
+```{r DensityPlot, echo=FALSE}
+ggplot(LiArray, aes(x=conc_ng, fill=as.factor(cores))) +
+  geom_density(alpha=0.3) +
+  scale_fill_viridis(discrete=T) +
+  labs(title="Density Plot of the Different Concentration Ranges per Cores",
+       x="Concentration in ng/ul")
+```
+
+The density plot shows a more "fluid" visualization of the histograms for the distribution of the concentration of all three cores.
+
+\newpage
+
+# Taking a Look at the QC Metrics of the 29 Arrays
+
+Finally we can take a look at the QC metrics of the microarray and see if there's any correlation between the number of cores and if it affects the QC. There are a variety of QC metrics measured by the microarray - the most critical being the "Area Under the Curve" (AUC). 
+
+The same graphs that were used in the concentration study, can also convey the distribution of the AUC curves for each core. 
+
+```{r HistAUC, echo=FALSE}
+ggplot(LiArray, aes(x=auc)) +
+  geom_histogram(bins=30,color = "black", fill = "dodgerblue") +
+  annotate("text", x=.83, y=2, col="darkblue",
+           label=paste("Mean = ", round(mean(LiArray$auc),2),
+                       ", SD = ", round(sd(LiArray$auc),2))) +
+  labs(title = "Histogram of the Distribution of AUC for the 29 samples", x="AUC",
+       y="# of patient samples")
+```
+
+The mean AUC shows .88, which impies a good quality signal despite samples coming from formulin-fixed paraffin embedded tissue. 
+
+\newpage
+
+We cand also see how the AUC looks by cores:
+
+```{r BoxAUC, echo=FALSE, fig.height=3, fig.width=4}
+ggplot(LiArray, aes(x=as.factor(cores), y = auc, fill = as.factor(cores))) +
+  geom_boxplot() +
+  scale_fill_viridis(discrete=TRUE, option = "magma") +
+  guides(fill="none") +
+  stat_summary(fun.y="mean", geom="point", shape=23, size=3, fill="dodgerblue") +
+  labs(title="Boxplot of the Area Under the Curve",
+       x="Number of Cores per Patient Sample", y = "AUC")
+```
+
+Looking at the boxplots, there doesn't seem to be a sizeable significant correlation between the the amount of cores and the AUC. We can note that the two samples that had an AUC under 0.81 both happened to occur from samples that had 1-2 cores, but more samples would be needed to affirm a significant correlation. The density plot agrees with the boxplot: 
+
+```{r DensityAUC, echo = FALSE}
+ggplot(LiArray, aes(x=auc, fill=as.factor(cores))) +
+  geom_density(alpha=0.3) +
+  scale_fill_viridis(discrete=T) +
+  labs(title="Density Plot of the AUC per Cores",
+       x="AUC")
+```
+
+\newpage
+
+## QC Metric Pearson Correlation
+
+Finally we can check the Pearson correlation with a few of the major QC parameters to see if there is any correlation between the number of cores added and the QC metric. Here, we will take a look at AUC, concentration, and background:
+
+```{r Pearson1, echo=FALSE}
+tempdat2 <- LiArray %>%
+  select(cores,conc_ng,bgrd_mean,auc)
+GGally::ggcorr(tempdat2, name = "Pearson r", label = TRUE)
+```
+
+This heatmap mainly shows that there's a slight positive correlation between the amount of cores and the concentration with a Pearson correlation of 0.6. However there doesn't seem to be a significant enough correlation between the number of cores and how it affects the QC metrics (Pearson correlation of 0.2). 
+
+\newpage
+
+Another iteration of the heatap can be seen here with scatterplots and the Pearson correlation combined in one figure:
+
+```{r Pearson2, echo=FALSE}
+GGally::ggpairs(tempdat2, title="Pearson Corrleation and Scatterplots of Various QC factors")
+```
+
+
+All in all, this is a very preliminary look at how the number of cores affect the downstream effects since there are only a few samples. There is an arguably positive correlation with the number of cores and the concentration of RNA, although  there is also the issue of core size where 1 core could be larger than a sample that has 2 cores due to its overall surface area - or the question of what constitutes 1 or two cores (see Figure 1). Other batch effects during sample processing could also cause an issue and may remain to be seen when further samples have been processed. Even with the 2 samples with 1-2 cores that had a low AUC value, it remains to be seen if there is a significant correlation with the number of cores and the downstream affects on the array.
+
+![As shown, cores have different surface areas and sizes. Since core size is not generally normalized, it's difficult to come to a definitive conclusion simply based on the amount of cores per sample - though some slight correlation was found, particularly in the concentration.](D:/Pics/LiCores.png)
+
+
