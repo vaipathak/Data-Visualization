@@ -1,0 +1,7 @@
+This was a project done to look at any downstream effects of the number of core tissue per patient sample on the quality control metrics
+of the microarray. 
+
+Patient samples contain generally 1 - 3 core of formulin-fixed paraffin embedded tissue. I mainly wanted to see if adding more cores gives
+better quality data on the microarray. To do this, I first tried out some models to show the correlation on how adding more cores usually 
+results in a higher concentration of RNA. Next I saw if there was a correlation between cores and the QC metrics as explained in the PDF
+summary.
